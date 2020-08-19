@@ -34,21 +34,29 @@ osp_tests_run: hosts local-defaults.yaml
 	-i hosts -e @local-defaults.yaml \
   20_tempest_ocp.yaml \
 
-podified-ctlplane: hosts ctlplane
-ctlplane: local-defaults.yaml
-	# NOTE: requires 'make olm'
+all_services=mariadb rabbitmq ovn keystone glance neutron-api nova-api nova-cell placement
+
+# Run a specific install playbook without dependencies
+install_%: install_%.yaml hosts local-defaults.yaml
 	ANSIBLE_FORCE_COLOR=true ansible-playbook \
-	-i hosts -e @local-defaults.yaml \
-	install_namespace.yaml \
-	install_mariadb.yaml \
-	install_rabbitmq.yaml \
-	install_keystone.yaml \
-	install_glance.yaml \
-	install_placement.yaml \
-	install_ovn.yaml \
-	install_neutron-api.yaml \
-	install_nova-api.yaml \
-	install_nova-cell.yaml
+	-i hosts -e @local-defaults.yaml $<
+
+# Run the install target for a playbook after running its dependencies
+_dep_%:
+	$(MAKE) install_$$(x="$@"; echo $${x#_dep_}) 
+
+_dep_all=$(patsubst %,_dep_%,$(all_services))
+
+# Define deployment dependencies between control plane services
+$(_dep_all): olm
+_dep_keystone: _dep_mariadb _dep_rabbitmq
+_dep_glance _dep_neutron-api _dep_nova-api _dep_nova-cell _dep_placement: _dep_keystone
+_dep_neutron-api: _dep_ovn
+_dep_nova-api _dep_nova-cell: _dep_placement
+
+# NOTE: requires 'make olm'
+podified-ctlplane: ctlplane
+ctlplane: $(_dep_all)
 
 olm: hosts local-defaults.yaml
 	ANSIBLE_FORCE_COLOR=true ansible-playbook \
