@@ -11,13 +11,13 @@
 
 - name: open nfsv4 port 2049/tcp (permanent config)
   firewalld:
-    zone: libvirt
+    zone: public
     port: 2049/tcp
     permanent: yes
     state: enabled
 
 - name: open nfsv4 port 2049/tcp (running config)
   firewalld:
-    zone: libvirt
+    zone: public
     port: 2049/tcp
     state: enabled

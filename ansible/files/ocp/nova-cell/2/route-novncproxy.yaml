@@ -1,13 +1,12 @@
 apiVersion: route.openshift.io/v1
 kind: Route
 metadata:
-  name: &name nova-cell1-novncproxy
-  namespace: openstack
+  name: nova-cell1-novncproxy
 spec:
   host: nova-cell1-novncproxy.apps.ostest.test.metalkube.org
   path: /
   to:
     kind: Service
-    name: *name
+    name: nova-cell1-novncproxy
   port:
     targetPort: novncproxy
