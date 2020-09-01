@@ -7,7 +7,7 @@
   - name: Include variables
     include_vars: vars/default.yaml
 
-  - name: cleanup previous dev-script deployment
+  - name: cleanup previous kni-ipi-virt deployment
     shell: |
       export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
       make clean
@@ -16,14 +16,14 @@
 
   - debug:
       msg: |
-        Executing dev-script. You can tail the logs at ~ocp/dev-script.log on
+        Executing kni-ipi-virt. You can tail the logs at /home/ocp/kni-ipi-virt.log on
         the host for progress.
 
-  - name: run dev-script
+  - name: run kni-ipi-virt
     shell: |
       set -o pipefail
       export PS4='+(${BASH_SOURCE}:${LINENO}): ${FUNCNAME[0]:+${FUNCNAME[0]}(): }'
-      make 2>&1 | tee ~/dev-script.log
+      make 2>&1 | tee ~/kni-ipi-virt.log
     args:
       chdir: "{{ base_path }}/dev-scripts"
     environment:
