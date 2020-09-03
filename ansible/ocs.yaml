@@ -1,0 +1,184 @@
+---
+- hosts: convergence_base
+  gather_facts: false
+  become: true
+  user: root
+  vars_files: vars/default.yaml
+  roles:
+  - oc_local
+
+  tasks:
+  - block:
+    - name: Install non-pip dependencies
+      package:
+        name: "{{ item }}"
+        state: latest
+      with_items:
+        - virt-install
+
+    - name: Install pip dependencies
+      command: "pip3 install {{ item }}"
+      with_items:
+        - virtualbmc
+
+    - name: Create storage VMs
+      shell: |
+        virt-install --ram 41943040 --vcpus 12 --os-variant rhel8.0 --cpu host-passthrough \
+        --disk size={{ ocp_worker_disk }},pool=default,device=disk,bus=virtio,format=qcow2 --import --noautoconsole \
+        --vnc --network=bridge:provisioning,mac="52:54:00:82:68:6{{ item }}" \
+        --network=bridge:baremetal,mac="52:54:00:82:69:6{{ item }}" --name "{{ ocp_cluster_name}}-storage-{{ item }}" \
+        --os-type=linux --events on_reboot=restart --boot hd,network
+      with_items:
+        - 0
+        - 1
+        - 2
+
+    - name: Create partitions on {{ ocs_device }}
+      shell: |
+        parted {{ ocs_device }} mkpart primary ext2 0% 10%;
+        parted {{ ocs_device }} mkpart primary ext2 10% 20%;
+        parted {{ ocs_device }} mkpart primary ext2 20% 30%;
+        parted {{ ocs_device }} mkpart extended 30% 100%;
+        parted {{ ocs_device }} mkpart logical ext2 40% 50%;
+        parted {{ ocs_device }} mkpart logical ext2 50% 60%;
+        parted {{ ocs_device }} mkpart logical ext2 60% 70%;
+        parted {{ ocs_device }} mkpart logical ext2 70% 80%;
+        parted {{ ocs_device }} mkpart logical ext2 80% 90%;
+        parted {{ ocs_device }} mkpart logical ext2 90% 100%
+
+    - name: attach disks to storage VMs
+      command: "{{ item }}"
+      register: attach_disks
+      failed_when: attach_disks.stderr != "" and "already exists" not in attach_disks.stderr
+      with_items:
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-0 --source {{ ocs_device }}1 --target vdb --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-0 --source {{ ocs_device }}2 --target vdc --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-0 --source {{ ocs_device }}3 --target vdd --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-1 --source {{ ocs_device }}5 --target vdb --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-1 --source {{ ocs_device }}6 --target vdc --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-1 --source {{ ocs_device }}7 --target vdd --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-2 --source {{ ocs_device }}8 --target vdb --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-2 --source {{ ocs_device }}9 --target vdc --persistent"
+        - "virsh attach-disk {{ ocp_cluster_name }}-storage-2 --source {{ ocs_device }}10 --target vdd --persistent"     
+
+    - name: Create and start storage VM vbmcs
+      shell: |
+        vbmc add "{{ ocp_cluster_name}}-storage-{{ item }}" --port "626{{ item }}" --username ADMIN --password ADMIN;
+        vbmc start "{{ ocp_cluster_name}}-storage-{{ item }}"
+      with_items:
+        - 0
+        - 1
+        - 2
+
+    - name: Open ports for storage VM vbmcs in firewalld
+      firewalld:
+        port: "626{{ item }}/udp"
+        permanent: yes
+        state: enabled
+        zone: "public"
+        immediate: yes
+      with_items:
+        - 0
+        - 1
+        - 2
+    
+    - name: Shutdown storage VMs using IPMI via vbmcs
+      shell: ipmitool -I lanplus -U ADMIN -P ADMIN -H 127.0.0.1 -p "626{{ item }}" power off
+      retries: 2
+      with_items:
+        - 0
+        - 1
+        - 2
+
+    - name: Add storage VM hostnames and IPs to DHCP server
+      blockinfile:
+        path: "{{ base_dir }}/dhcp/generated/bm/etc/dnsmasq.d/dnsmasq.hostsfile"
+        block: |
+          52:54:00:82:69:60,10.0.1.140,{{ ocp_cluster_name }}-storage-0.{{ ocp_cluster_name }}.test.metalkube.org
+          52:54:00:82:69:61,10.0.1.141,{{ ocp_cluster_name }}-storage-1.{{ ocp_cluster_name }}.test.metalkube.org
+          52:54:00:82:69:62,10.0.1.142,{{ ocp_cluster_name }}-storage-2.{{ ocp_cluster_name }}.test.metalkube.org
+    
+    - name: Restart DHCP server
+      shell: |
+        podman stop ipi-dnsmasq-bm;
+        podman start ipi-dnsmasq-bm
+
+    - name: Add storage VM hostnames and IP octet to DNS server
+      blockinfile:
+        path: "{{ base_dir }}/dns/generated/db.reverse"
+        block: |
+          140 IN  PTR {{ ocp_cluster_name }}-storage-0.{{ ocp_cluster_name }}.test.metalkube.org.
+          141 IN  PTR {{ ocp_cluster_name }}-storage-1.{{ ocp_cluster_name }}.test.metalkube.org.
+          142 IN  PTR {{ ocp_cluster_name }}-storage-2.{{ ocp_cluster_name }}.test.metalkube.org.
+
+    - name: Add storage VM hostnames and IPs DNS server
+      blockinfile:
+        path: "{{ base_dir }}/dns/generated/db.zone"
+        block: |
+          {{ ocp_cluster_name }}-storage-0                          A 10.0.1.140
+          {{ ocp_cluster_name }}-storage-1                          A 10.0.1.141
+          {{ ocp_cluster_name }}-storage-2                          A 10.0.1.142
+
+    - name: Restart DNS server
+      shell: |
+        podman stop ipi-coredns;
+        podman start ipi-coredns
+      become: ocp
+
+    - name: Create OCS YAMLs working dir
+      file:
+        path: "{{ working_yamls_dir }}/ocs"
+        state: directory
+        mode: 0755
+
+    - name: Write OCS YAMLs to working dir
+      template:
+        src: ocs/{{ item }}.yaml.j2
+        dest: "{{ working_yamls_dir }}/ocs/{{ item }}.yaml"
+      with_items:
+        - bmhs
+        - local-storage-sub
+        - local-storage-volumes
+        - machineset
+        - ocs-storage-cluster
+        - ocs-sub
+
+    - name: Create storage machineset in OCP
+      shell: |
+        oc apply -f {{ working_yamls_dir }}/ocs/machineset.yaml
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Create storage baremetal hosts in OCP
+      shell: |
+        oc apply -f {{ working_yamls_dir }}/ocs/bmhs.yaml
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Wait for storage baremetal hosts to become ready
+      shell: oc get bmh -l test-storage=yes -n openshift-machine-api
+      retries: 300
+      register: storage_bmhs_ready
+      until: (storage_bmhs_ready.stdout | regex_findall('OK       ready') | length) == 3
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Scale storage machineset to 3
+      shell: oc scale machineset/{{ ocp_cluster_name }}-storage-0 --replicas=3 -n openshift-machine-api
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Wait for storage nodes to be provisioned
+      shell: oc get nodes -l node-role.kubernetes.io/worker
+      retries: 300
+      register: storage_nodes_ready
+      until: (storage_nodes_ready.stdout | regex_findall('Ready    storage') | length) == 3
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    when: ocs_enabled == true
