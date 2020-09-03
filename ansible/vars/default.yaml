@@ -4,7 +4,7 @@ base_path: /home/ocp
 #dev_scripts_branch: defaults to "HEAD"
 
 # To set a specific release to install.
-ocp_release_image: 4.5.6
+ocp_release_image: 4.5.8
 
 # private repo to read required secret files from
 # The playbooks expect secret files which can be placed in a private repo
@@ -25,7 +25,7 @@ ocp_ip_stack: v4
 ocp_num_masters: 3
 # ocp_num_workers this needs to be > the number of osp compute workers
 # worker-0 is used to host OSP controller VM, if osp_controller_scale set to 3 then worker-0 ..2 are used.
-ocp_num_workers: 5
+ocp_num_workers: 3
 ocp_master_memory: 16384
 ocp_master_vcpu: 8
 ocp_master_disk: 120
@@ -84,3 +84,7 @@ nfs_data_dir: /home/nfs/data
 nfs_export_dir: /home/nfs
 
 default_timeout: 180
+
+# ocs specific
+ocs_enabled: true
+ocs_device: /dev/sdb

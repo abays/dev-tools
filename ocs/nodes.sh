@@ -45,9 +45,6 @@ for i in {0..2}; do
     if [ $vm_ready = true ]; then 
         create_vbmc "$name" "626$i"
 
-        # sudo firewall-cmd --zone=public --add-port=626$i/udp --permanent
-        # sudo firewall-cmd --reload
-
         sleep 2
 
         ipmi_output=$(ipmitool -I lanplus -U ADMIN -P ADMIN -H 127.0.0.1 -p "626$i" power off)
@@ -109,7 +106,7 @@ podman start ipi-dnsmasq-bm
 
 DNS_UPDATED=$(grep storage /home/ocp/dev-scripts/dns/generated/db.reverse)
 
-if [[ -z "DNS_UPDATED" ]]; then
+if [[ -z "$DNS_UPDATED" ]]; then
   printf "\n140 IN  PTR ostest-storage-0.ostest.test.metalkube.org.\n141 IN  PTR ostest-storage-1.ostest.test.metalkube.org.\n142 IN  PTR ostest-storage-2.ostest.test.metalkube.org.\n" >> /home/ocp/dev-scripts/dns/generated/db.reverse
   printf "\nostest-storage-0                          A 10.0.1.140\nostest-storage-1                          A 10.0.1.141\nostest-storage-2                          A 10.0.1.142\n" >> /home/ocp/dev-scripts/dns/generated/db.zone 
 fi
