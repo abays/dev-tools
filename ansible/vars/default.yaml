@@ -1,6 +1,11 @@
 ---
 base_path: /home/ocp
-#dev_scripts_repo: defaults to "https://github.com/openshift-metal3/dev-scripts.git"
+
+skip_subscription: true # set to true if you set subscription configuration manually before using this tool
+
+# OCP deployment fields
+dev_scripts_repo: https://github.com/redhat-nfvpe/kni-ipi-virt.git # defaults to "https://github.com/openshift-metal3/dev-scripts.git"
+use_kni_ipi_virt: "{{ dev_scripts_repo is defined and (dev_scripts_repo | regex_findall('kni-ipi-virt') | length) > 0 }}"
 #dev_scripts_branch: defaults to "HEAD"
 
 # To set a specific release to install.
@@ -86,5 +91,5 @@ nfs_export_dir: /home/nfs
 default_timeout: 180
 
 # ocs specific
-ocs_enabled: true
+ocs_enabled: true   # NOTE: requires use_kni_ipi_virt to be true
 ocs_device: /dev/sdb

@@ -8,7 +8,9 @@
   - oc_local
 
   tasks:
-  - block:
+  - name: Provision storage nodes and install OCS
+    when: ocs_enabled == true and use_kni_ipi_virt == true
+    block:
     - name: Install non-pip dependencies
       package:
         name: "{{ item }}"
@@ -38,6 +40,10 @@
         - 1
         - 2
 
+    - name: Read host {{ ocs_device }} information
+      parted: device={{ ocs_device }} unit=MiB
+      register: device_info
+
     - name: Create partitions on {{ ocs_device }}
       shell: |
         parted {{ ocs_device }} mkpart primary ext2 0% 10%;
@@ -50,6 +56,7 @@
         parted {{ ocs_device }} mkpart logical ext2 70% 80%;
         parted {{ ocs_device }} mkpart logical ext2 80% 90%;
         parted {{ ocs_device }} mkpart logical ext2 90% 100%
+      when: (device_info.partitions | length) == 0
 
     - name: attach disks to storage VMs
       command: "{{ item }}"
@@ -166,7 +173,7 @@
     - name: Wait for storage baremetal hosts to become ready
       shell: oc get bmh -l test-storage=yes -n openshift-machine-api
       retries: 100
-      delay: 20
+      delay: 30
       register: storage_bmhs_ready
       until: (storage_bmhs_ready.stdout | regex_findall('OK       ready') | length) == 3
       environment:
@@ -182,14 +189,14 @@
     - name: Wait for storage nodes to be provisioned
       shell: oc get nodes -l node-role.kubernetes.io/storage
       retries: 100
-      delay: 20
+      delay: 30
       register: storage_nodes_ready
       until: (storage_nodes_ready.stdout | regex_findall('Ready    storage') | length) == 3
       environment:
         PATH: "{{ oc_env_path }}"
         KUBECONFIG: "{{ kubeconfig }}"
 
-    - name: Label storage nodes as local-storage capable # NOTE: not working
+    - name: Label storage nodes as local-storage capable
       shell: |
         for i in $(oc get nodes --no-headers -l node-role.kubernetes.io/storage -o name); do
           oc label $i cluster.ocs.openshift.io/openshift-storage=''
@@ -201,7 +208,7 @@
     - name: Deploy local-storage subscription
       shell: |
         oc new-project local-storage
-        oc annotate project local-storage openshift.io/node-selector=''
+        oc annotate project local-storage --overwrite openshift.io/node-selector=''
         oc apply -f {{ working_yamls_dir }}/ocs/local-storage-sub.yaml
       environment:
         PATH: "{{ oc_env_path }}"
@@ -256,7 +263,7 @@
     - name: Wait for OCS pods to be ready
       shell: oc get pods -n openshift-storage
       retries: 100
-      delay: 20
+      delay: 30
       register: ocs_pods_ready
       until: ((ocs_pods_ready.stdout | regex_findall('csi-cephfsplugin-.+Running') | length) == (ocs_pods_ready.stdout | regex_findall('csi-cephfsplugin-.+') | length) and (ocs_pods_ready.stdout | regex_findall('csi-cephfsplugin-.+Running') | length) != 0)
              and ((ocs_pods_ready.stdout | regex_findall('csi-rbdplugin-.+Running') | length) == (ocs_pods_ready.stdout | regex_findall('csi-rbdplugin-.+') | length) and (ocs_pods_ready.stdout | regex_findall('csi-rbdplugin-.+Running') | length) != 0)
@@ -267,5 +274,3 @@
       environment:
         PATH: "{{ oc_env_path }}"
         KUBECONFIG: "{{ kubeconfig }}"
-
-    when: ocs_enabled == true

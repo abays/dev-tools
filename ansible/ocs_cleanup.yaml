@@ -8,8 +8,16 @@
   - oc_local
 
   tasks:
-  - block:
-    - name: Remove OCS from OCP cluster
+  - name: Remove OCS and de-provision storage nodes
+    when: ocs_enabled == true and use_kni_ipi_virt == true
+    block:
+    - name: Delete OCS storage cluster
+      shell: oc delete --ignore-not-found -f {{ working_yamls_dir }}/ocs/ocs-storage-cluster.yaml
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Remove remaining OCS objects from OCP cluster
       shell: |
         oc patch pvc db-noobaa-db-0 --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n openshift-storage;
         oc patch cephcluster storagecluster-cephcluster --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n openshift-storage;
@@ -48,7 +56,7 @@
     - name: Wait for storage nodes to be de-provisioned
       shell: oc get nodes -l node-role.kubernetes.io/storage
       retries: 100
-      delay: 20
+      delay: 30
       register: storage_nodes_removed
       until: "'-storage-' not in storage_nodes_removed.stdout"
       environment:
@@ -102,6 +110,17 @@
         - "{{ ocp_cluster_name }}-storage-1"
         - "{{ ocp_cluster_name }}-storage-2"
 
+    - name: Get list of lingering OCS VGs, if any
+      shell: |
+        vgs --noheadings -o vg_name
+      register: ocs_vgs
+
+    - name: Delete lingering OCS VGs, if any
+      command: vgremove {{ item }} -y
+      with_items: "{{ ocs_vgs.stdout_lines }}"
+      when:
+        - (item | regex_findall('ceph-') | length) > 0
+
     - name: Read host {{ ocs_device }} information
       parted: device={{ ocs_device }} unit=MiB
       register: device_info
@@ -112,3 +131,5 @@
         number: '{{ item.num }}'
         state: absent
       loop: '{{ device_info.partitions }}'
+
+    when: ocs_enabled == true and use_kni_ipi_virt == true
