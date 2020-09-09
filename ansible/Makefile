@@ -99,10 +99,11 @@ nfs_cleanup: hosts
 	 rm \$$temp"
 
 ocp_cleanup: hosts
+	$(MAKE) ocs_cleanup
 	ANSIBLE_FORCE_COLOR=true ansible -i hosts convergence_base \
 	--become --become-user ocp \
 	-m shell -a "cd /home/ocp/dev-scripts && make clean"
-	$(MAKE) nfs_cleanup
+	$(MAKE) nfs_cleanup 
 
 demo: hosts
 	ANSIBLE_FORCE_COLOR=true ansible-playbook \

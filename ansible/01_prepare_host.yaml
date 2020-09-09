@@ -7,6 +7,9 @@
   - name: Include variables
     include_vars: vars/default.yaml
 
+  - debug:
+      var: use_kni_ipi_virt
+
   - name: Remove beaker repos
     block:
     - name: get beaker repo files
@@ -22,66 +25,67 @@
       with_items: "{{ beaker_files_to_delete.files }}"
 
   - name: Register host to subscription manager, metal3 dev scripts use subscription manager for RHEL
+    when: not skip_subscription
     block:
-    # - name: Install and execute rhos-release.
-    #   import_role:
-    #     name: prepare-rhos-release
-    #   vars:
-    #     rhos_release_args: "-x"
+    - name: Install and execute rhos-release.
+      import_role:
+        name: prepare-rhos-release
+      vars:
+        rhos_release_args: "-x"
 
-    # - name: use local rhel-subscription info
-    #   when: secrets_repo is undefined
-    #   block:
-    #   - name: Include rhel-subscription info
-    #     include_vars: vars/rhel-subscription.yaml
-    #   rescue:
-    #   - fail:
-    #       msg: |
-    #         vars/rhel-subscription.yaml is not present. You must create this
-    #         file manually. The format of the file is:
+    - name: use local rhel-subscription info
+      when: secrets_repo is undefined
+      block:
+      - name: Include rhel-subscription info
+        include_vars: vars/rhel-subscription.yaml
+      rescue:
+      - fail:
+          msg: |
+            vars/rhel-subscription.yaml is not present. You must create this
+            file manually. The format of the file is:
 
-    #         rhel_subscription_activation_key: <activation key>
-    #         rhel_subscription_org_id: "xxxxxxx"
+            rhel_subscription_activation_key: <activation key>
+            rhel_subscription_org_id: "xxxxxxx"
 
-    # - name: use secrets_repo
-    #   when: secrets_repo is defined
-    #   block:
-    #   - set_fact:
-    #       secrets_repo_path: "{{ ansible_env.HOME }}/{{ secrets_repo | urlsplit('hostname') }}/{{ (secrets_repo | urlsplit('path') | splitext)[0] }}"
-    #   - name: create base dir for secrets_repo repo
-    #     file:
-    #       path: "{{ secrets_repo_path }}"
-    #       state: directory
-    #       mode: "0755"
-    #   - name: Clone the repo specified in secrets_repo
-    #     git:
-    #       repo: "{{ secrets_repo }}"
-    #       dest: "{{ secrets_repo_path }}"
-    #       version: "{{ secrets_branch | default('HEAD', true) }}"
-    #   - name: Include rhel-subscription info
-    #     include_vars: "{{ secrets_repo_path }}/rhel-subscription.yaml"
-    #   rescue:
-    #   - fail:
-    #       msg: |
-    #         rhel-subscription.yaml is not present in {{ secrets_repo }}. You must create this
-    #         file. The format of the file is:
+    - name: use secrets_repo
+      when: secrets_repo is defined
+      block:
+      - set_fact:
+          secrets_repo_path: "{{ ansible_env.HOME }}/{{ secrets_repo | urlsplit('hostname') }}/{{ (secrets_repo | urlsplit('path') | splitext)[0] }}"
+      - name: create base dir for secrets_repo repo
+        file:
+          path: "{{ secrets_repo_path }}"
+          state: directory
+          mode: "0755"
+      - name: Clone the repo specified in secrets_repo
+        git:
+          repo: "{{ secrets_repo }}"
+          dest: "{{ secrets_repo_path }}"
+          version: "{{ secrets_branch | default('HEAD', true) }}"
+      - name: Include rhel-subscription info
+        include_vars: "{{ secrets_repo_path }}/rhel-subscription.yaml"
+      rescue:
+      - fail:
+          msg: |
+            rhel-subscription.yaml is not present in {{ secrets_repo }}. You must create this
+            file. The format of the file is:
 
-    #         rhel_subscription_activation_key: <activation key>
-    #         rhel_subscription_org_id: "xxxxxxx"
+            rhel_subscription_activation_key: <activation key>
+            rhel_subscription_org_id: "xxxxxxx"
 
-    # - name: unregister node
-    #   redhat_subscription:
-    #     state: absent
-    #     activationkey: "{{ rhel_subscription_activation_key }}"
-    #     org_id: "{{ rhel_subscription_org_id }}"
-    #     pool: 8a85f99c6c8b9588016c8be0f1b50ec1
+    - name: unregister node
+      redhat_subscription:
+        state: absent
+        activationkey: "{{ rhel_subscription_activation_key }}"
+        org_id: "{{ rhel_subscription_org_id }}"
+        pool: 8a85f99c6c8b9588016c8be0f1b50ec1
 
-    # - name: Register with activationkey and consume subscriptions matching Red Hat Enterprise Server
-    #   redhat_subscription:
-    #     state: present
-    #     activationkey: "{{ rhel_subscription_activation_key }}"
-    #     org_id: "{{ rhel_subscription_org_id }}"
-    #     pool: 8a85f99c6c8b9588016c8be0f1b50ec1
+    - name: Register with activationkey and consume subscriptions matching Red Hat Enterprise Server
+      redhat_subscription:
+        state: present
+        activationkey: "{{ rhel_subscription_activation_key }}"
+        org_id: "{{ rhel_subscription_org_id }}"
+        pool: 8a85f99c6c8b9588016c8be0f1b50ec1
 
     - name: enable rhel-8-for-x86_64-appstream-rpms and openstack-16-for-rhel-8-x86_64-rpms repos
       command: subscription-manager repos --enable=openstack-16-for-rhel-8-x86_64-rpms --enable=rhel-8-for-x86_64-appstream-rpms --enable=advanced-virt-for-rhel-8-x86_64-rpms
@@ -279,7 +283,7 @@
       name: ocp
       state: present
 
-  - name: create ocp user to run kni-ipi-virt
+  - name: create ocp user to run {{ (use_kni_ipi_virt) | ternary('kni-ipi-virt','metal3 installer dev-scripts') }} 
     user:
       name: ocp
       comment: ocp user
