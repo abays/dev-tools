@@ -11,12 +11,20 @@
   - name: Remove OCS and de-provision storage nodes
     when: ocs_enabled == true and use_kni_ipi_virt == true
     block:
-    - name: Delete OCS storage cluster
+    - name: Delete OCS storage cluster object
       shell: oc delete --ignore-not-found -f {{ working_yamls_dir }}/ocs/ocs-storage-cluster.yaml
+      register: remove_ocs_storage_cluster
+      failed_when: remove_ocs_storage_cluster.stderr != "" and ("not found" not in remove_ocs_storage_cluster.stderr and "no matches for kind" not in remove_ocs_storage_cluster.stderr)
       environment:
         PATH: "{{ oc_env_path }}"
         KUBECONFIG: "{{ kubeconfig }}"
 
+    - name: Delete noobaa-db-0 pod
+      shell: oc delete --ignore-not-found pods noobaa-db-0 --force --grace-period=0 -n openshift-storage
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+        
     - name: Remove remaining OCS objects from OCP cluster
       shell: |
         oc patch pvc db-noobaa-db-0 --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n openshift-storage;
