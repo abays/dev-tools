@@ -7,7 +7,7 @@
   - name: Include variables
     include_vars: vars/default.yaml
 
-  - name: Clone the OCP deployment tool repo
+  - name: Clone {{ (use_kni_ipi_virt) | ternary('kni-ipi-virt','dev-scripts') }} repo
     git:
       repo: "{{ dev_scripts_repo | default('https://github.com/openshift-metal3/dev-scripts.git', true) }}"
       dest: "{{ base_path }}/dev-scripts"
