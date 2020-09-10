@@ -47,6 +47,9 @@ ocp_worker_disk: 120
 # OCP cluster name
 ocp_cluster_name: ostest
 
+# Kubeconfig default path
+kubeconfig_path: "{{ lookup('vars','base_path') + ((use_kni_ipi_virt) | ternary('/clusterconfigs/auth/kubeconfig','/dev-scripts/ocp/'+lookup('vars','ocp_cluster_name')+'/auth/kubeconfig')) }}"
+
 # Released version of the opm package from the operator-framework
 opm_version: v1.12.5
 
