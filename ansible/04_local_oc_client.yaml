@@ -33,16 +33,6 @@
   vars_files: vars/default.yaml
   tasks:
 
-  - name: Set kubeconfig path for dev-scripts
-    set_fact:
-      kubeconfig_path: "{{ base_path }}/dev-scripts/ocp/{{ ocp_cluster_name }}/auth/kubeconfig"
-    when: not use_kni_ipi_virt
-
-  - name: Set kubeconfig path for kni-ipi-virt
-    set_fact:
-      kubeconfig_path: "{{ base_path }}/clusterconfigs/auth/kubeconfig"
-    when: use_kni_ipi_virt
-
   - name: Copy kubeconfig
     fetch:
       dest: "{{ hostvars['localhost']['kubeconfig'] }}"
