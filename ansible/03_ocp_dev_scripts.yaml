@@ -33,8 +33,8 @@
     debug:
       msg:
         - "1) add the following line to your local /etc/hosts:"
-        - "   {{ (use_kni_ipi_virt) | ternary('10.0.1.4','192.168.111.4') }}   console-openshift-console.apps.{{ ocp_cluster_name }}.test.metalkube.org console openshift-authentication-openshift-authentication.apps.{{ ocp_cluster_name }}.test.metalkube.org api.{{ ocp_cluster_name }}.test.metalkube.org prometheus-k8s-openshift-monitoring.apps.{{ ocp_cluster_name }}.test.metalkube.org alertmanager-main-openshift-monitoring.apps.{{ ocp_cluster_name }}.test.metalkube.org kubevirt-web-ui.apps.{{ ocp_cluster_name }}.test.metalkube.org oauth-openshift.apps.{{ ocp_cluster_name }}.test.metalkube.org grafana-openshift-monitoring.apps.{{ ocp_cluster_name }}.test.metalkube.org"
+        - "   192.168.111.4   console-openshift-console.apps.{{ ocp_cluster_name }}.test.metalkube.org console openshift-authentication-openshift-authentication.apps.{{ ocp_cluster_name }}.test.metalkube.org api.{{ ocp_cluster_name }}.test.metalkube.org prometheus-k8s-openshift-monitoring.apps.{{ ocp_cluster_name }}.test.metalkube.org alertmanager-main-openshift-monitoring.apps.{{ ocp_cluster_name }}.test.metalkube.org kubevirt-web-ui.apps.{{ ocp_cluster_name }}.test.metalkube.org oauth-openshift.apps.{{ ocp_cluster_name }}.test.metalkube.org grafana-openshift-monitoring.apps.{{ ocp_cluster_name }}.test.metalkube.org"
         - "2) run on your local system:"
-        - "   sshuttle -r <user>@{{ ansible_fqdn }} {{ (use_kni_ipi_virt) | ternary('10.0.1.0','192.168.111.0') }}/24"
+        - "   sshuttle -r <user>@{{ ansible_fqdn }} 192.168.111.0/24"
         - "3) access:"
         - "   https://console-openshift-console.apps.{{ ocp_cluster_name }}.test.metalkube.org"

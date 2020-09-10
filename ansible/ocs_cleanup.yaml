@@ -19,36 +19,68 @@
         PATH: "{{ oc_env_path }}"
         KUBECONFIG: "{{ kubeconfig }}"
 
-    - name: Delete noobaa-db-0 pod
-      shell: oc delete --ignore-not-found pods noobaa-db-0 --force --grace-period=0 -n openshift-storage
+    - name: Wait until rook-ceph-mon, rook-ceph-osd and non-operator-noobaa pods are removed
+      shell: oc get pods -n openshift-storage
+      retries: 100
+      delay: 15
+      register: ocs_pods_removed
+      until: (ocs_pods_removed.stdout | regex_findall('rook-ceph-mon-') | length) == 0 and (ocs_pods_removed.stdout | regex_findall('rook-ceph-osd-') | length) == 0
+             and (ocs_pods_removed.stdout | regex_findall('noobaa-') | length) <= 1
       environment:
         PATH: "{{ oc_env_path }}"
         KUBECONFIG: "{{ kubeconfig }}"
-        
-    - name: Remove remaining OCS objects from OCP cluster
-      shell: |
-        oc patch pvc db-noobaa-db-0 --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n openshift-storage;
-        oc patch cephcluster storagecluster-cephcluster --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n openshift-storage;
-        oc patch storagecluster storagecluster --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n openshift-storage;
-        oc delete storagecluster storagecluster -n openshift-storage;
-        oc patch backingstore noobaa-default-backing-store --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n openshift-storage;
-        oc delete --ignore-not-found namespace/openshift-storage
-      register: remove_ocs
-      failed_when: remove_ocs.stderr != "" and ("not found" not in remove_ocs.stderr and "the server doesn't have a resource type" not in remove_ocs.stderr)
+    
+    - name: Delete OCS subscription
+      shell: oc delete --ignore-not-found -f {{ working_yamls_dir }}/ocs/ocs-sub.yaml
+      register: remove_ocs_sub
+      failed_when: remove_ocs_sub.stderr != "" and ("not found" not in remove_ocs_sub.stderr and "no matches for kind" not in remove_ocs_sub.stderr)
       environment:
         PATH: "{{ oc_env_path }}"
         KUBECONFIG: "{{ kubeconfig }}"
 
-    - name: Remove local storage from OCP cluster
+    - name: Wait until openshift-storage namespace is removed
+      shell: oc get namespace
+      retries: 100
+      delay: 15
+      register: ocs_namespace_removed
+      until: (ocs_namespace_removed.stdout | regex_findall('openshift-storage') | length) == 0
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Delete local-storage localvolume objects
+      shell: oc delete --ignore-not-found -f {{ working_yamls_dir }}/ocs/local-storage-volumes.yaml
+      register: remove_local_storage_volumes
+      failed_when: remove_local_storage_volumes.stderr != "" and ("not found" not in remove_local_storage_volumes.stderr and "no matches for kind" not in remove_local_storage_volumes.stderr)
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Delete local-storage pvs
       shell: |
-        oc delete --ignore-not-found localvolumes/local-disks -n local-storage
         for i in $(oc get pv -n local-storage -l storage.openshift.com/local-volume-owner-name=local-disks --no-headers -o name); do
-          oc delete $i -n local-storage
+          oc delete $i
         done
-        oc patch localvolume local-disks --type='json' -p='[{"op": "replace", "path": "/metadata/finalizers", "value":[]}]' -n local-storage;
-        oc delete --ignore-not-found namespace/local-storage
-      register: remove_local_storage
-      failed_when: remove_local_storage.stderr != "" and ("not found" not in remove_ocs.stderr and "the server doesn't have a resource type" not in remove_ocs.stderr)
+      register: remove_local_storage_pvs
+      failed_when: remove_local_storage_pvs.stderr != "" and "not found" not in remove_local_storage_pvs.stderr
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"      
+
+    - name: Delete local-storage subscription
+      shell: oc delete --ignore-not-found -f {{ working_yamls_dir }}/ocs/local-storage-sub.yaml
+      register: remove_local_storage_sub
+      failed_when: remove_local_storage_sub.stderr != "" and ("not found" not in remove_local_storage_sub.stderr and "no matches for kind" not in remove_local_storage_sub.stderr)
+      environment:
+        PATH: "{{ oc_env_path }}"
+        KUBECONFIG: "{{ kubeconfig }}"
+
+    - name: Wait until local-storage namespace is removed
+      shell: oc get namespace
+      retries: 100
+      delay: 15
+      register: local_storage_namespace_removed
+      until: (local_storage_namespace_removed.stdout | regex_findall('local-storage') | length) == 0
       environment:
         PATH: "{{ oc_env_path }}"
         KUBECONFIG: "{{ kubeconfig }}"
@@ -139,5 +171,3 @@
         number: '{{ item.num }}'
         state: absent
       loop: '{{ device_info.partitions }}'
-
-    when: ocs_enabled == true and use_kni_ipi_virt == true
