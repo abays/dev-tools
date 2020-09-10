@@ -17,7 +17,7 @@ spec:
   online: true
   bootMACAddress: 52:54:00:82:68:60 
   bmc:
-    address: ipmi://10.0.1.2:6260
+    address: ipmi://192.168.111.1:6260
     credentialsName: storage-0-bmc-secret 
   hardwareProfile: libvirt
 ---
@@ -40,7 +40,7 @@ spec:
   online: true
   bootMACAddress: 52:54:00:82:68:61 
   bmc:
-    address: ipmi://10.0.1.2:6261
+    address: ipmi://192.168.111.1:6261
     credentialsName: storage-1-bmc-secret 
   hardwareProfile: libvirt
 ---
@@ -63,6 +63,6 @@ spec:
   online: true
   bootMACAddress: 52:54:00:82:68:62 
   bmc:
-    address: ipmi://10.0.1.2:6262
+    address: ipmi://192.168.111.1:6262
     credentialsName: storage-2-bmc-secret 
   hardwareProfile: libvirt

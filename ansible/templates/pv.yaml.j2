@@ -9,6 +9,6 @@ spec:
   - {% if shared %}ReadWriteMany{% else %}ReadWriteOnce{% endif %}
   nfs: 
     path: {{ nfs_export_dir}}/{{ name }}
-    server: 10.0.1.2
+    server: 192.168.111.1
   persistentVolumeReclaimPolicy: Recycle
   storageClassName: host-nfs-storageclass

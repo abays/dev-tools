@@ -150,6 +150,12 @@
         regexp: '^export OCP_VERSION=.*'
         line: 'export OCP_VERSION={{ ocp_release_image.split(":")[1].split("-")[0] }}'
 
+    - name: set CLUSTER_CONFIGS_DIR in {{ base_path }}/dev-scripts/common.sh
+      lineinfile:
+        path: "{{ base_path }}/dev-scripts/common.sh"
+        regexp: '^export CLUSTER_CONFIGS_DIR='
+        line: 'export CLUSTER_CONFIGS_DIR="{{ base_path }}/dev-scripts/ocp/{{ ocp_cluster_name }}"'
+
     - name: set PROJECT_DIR in {{ base_path }}/dev-scripts/common.sh
       lineinfile:
         path: "{{ base_path }}/dev-scripts/common.sh"
@@ -173,6 +179,36 @@
         path: "{{ base_path }}/dev-scripts/common.sh"
         regexp: '^export CLUSTER_NAME='
         line: export CLUSTER_NAME='{{ ocp_cluster_name }}'
+
+    - name: set BM_CIDR in {{ base_path }}/dev-scripts/common.sh
+      lineinfile:
+        path: "{{ base_path }}/dev-scripts/common.sh"
+        regexp: '^export BM_CIDR='
+        line: export BM_CIDR='192.168.111.0/24'
+
+    - name: set BM_GW_IP in {{ base_path }}/dev-scripts/common.sh
+      lineinfile:
+        path: "{{ base_path }}/dev-scripts/common.sh"
+        regexp: '^export BM_GW_IP='
+        line: export BM_GW_IP='192.168.111.1'
+
+    - name: set DNS_VIP in {{ base_path }}/dev-scripts/common.sh
+      lineinfile:
+        path: "{{ base_path }}/dev-scripts/common.sh"
+        regexp: '^export DNS_VIP='
+        line: export DNS_VIP='192.168.111.3'
+
+    - name: set INGRESS_VIP in {{ base_path }}/dev-scripts/common.sh
+      lineinfile:
+        path: "{{ base_path }}/dev-scripts/common.sh"
+        regexp: '^export INGRESS_VIP='
+        line: export INGRESS_VIP='192.168.111.4'
+
+    - name: set API_VIP in {{ base_path }}/dev-scripts/common.sh
+      lineinfile:
+        path: "{{ base_path }}/dev-scripts/common.sh"
+        regexp: '^export API_VIP='
+        line: export API_VIP='192.168.111.5'
 
     - name: set OCP number of workers
       lineinfile:
