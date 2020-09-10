@@ -93,6 +93,9 @@ nfs_export_dir: /home/nfs
 
 default_timeout: 180
 
+# worker node where openstackclient pod will run
+openstackclient_pod_worker: worker-0
+
 # ocs specific
 ocs_enabled: true   # NOTE: requires use_kni_ipi_virt to be true
 ocs_device: /dev/sdb
