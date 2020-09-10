@@ -10,6 +10,6 @@ spec:
   path: /
   to:
     kind: Service
-    name: nova-cell1-novncproxy
+    name: *name
   port:
     targetPort: novncproxy
