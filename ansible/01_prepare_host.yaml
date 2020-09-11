@@ -7,9 +7,6 @@
   - name: Include variables
     include_vars: vars/default.yaml
 
-  - debug:
-      var: use_kni_ipi_virt
-
   - name: Remove beaker repos
     block:
     - name: get beaker repo files
@@ -24,7 +21,7 @@
         state: absent
       with_items: "{{ beaker_files_to_delete.files }}"
 
-  - name: Register host to subscription manager, metal3 dev scripts use subscription manager for RHEL
+  - name: Register host to subscription manager, {{ (use_kni_ipi_virt) | ternary('kni-ipi-virt uses','metal3 dev scripts use') }} subscription manager for RHEL
     when: not skip_subscription
     block:
     - name: Install and execute rhos-release.
@@ -301,4 +298,3 @@
   - name: Configure NFS server
     import_role:
       name: nfs_server
-      
