@@ -12,7 +12,6 @@
       repo: "{{ dev_scripts_repo | default('https://github.com/openshift-metal3/dev-scripts.git', true) }}"
       dest: "{{ base_path }}/dev-scripts"
       version: "{{ dev_scripts_branch | default('HEAD', true) }}"
-      force: yes
 
   - name: Copy pull-secret file 
     when: secrets_repo is undefined
