@@ -106,9 +106,9 @@
       blockinfile:
         path: "{{ base_path }}/dev-scripts/dhcp/generated/bm/etc/dnsmasq.d/dnsmasq.hostsfile"
         block: |
-          52:54:00:82:69:60,10.0.1.140,{{ ocp_cluster_name }}-storage-0.{{ ocp_cluster_name }}.test.metalkube.org
-          52:54:00:82:69:61,10.0.1.141,{{ ocp_cluster_name }}-storage-1.{{ ocp_cluster_name }}.test.metalkube.org
-          52:54:00:82:69:62,10.0.1.142,{{ ocp_cluster_name }}-storage-2.{{ ocp_cluster_name }}.test.metalkube.org
+          52:54:00:82:69:60,192.168.111.140,{{ ocp_cluster_name }}-storage-0.{{ ocp_cluster_name }}.test.metalkube.org
+          52:54:00:82:69:61,192.168.111.141,{{ ocp_cluster_name }}-storage-1.{{ ocp_cluster_name }}.test.metalkube.org
+          52:54:00:82:69:62,192.168.111.142,{{ ocp_cluster_name }}-storage-2.{{ ocp_cluster_name }}.test.metalkube.org
     
     - name: Restart DHCP server
       shell: |
@@ -127,9 +127,9 @@
       blockinfile:
         path: "{{ base_path }}/dev-scripts/dns/generated/db.zone"
         block: |
-          {{ ocp_cluster_name }}-storage-0                          A 10.0.1.140
-          {{ ocp_cluster_name }}-storage-1                          A 10.0.1.141
-          {{ ocp_cluster_name }}-storage-2                          A 10.0.1.142
+          {{ ocp_cluster_name }}-storage-0                          A 192.168.111.140
+          {{ ocp_cluster_name }}-storage-1                          A 192.168.111.141
+          {{ ocp_cluster_name }}-storage-2                          A 192.168.111.142
 
     - name: Restart DNS server
       shell: |
